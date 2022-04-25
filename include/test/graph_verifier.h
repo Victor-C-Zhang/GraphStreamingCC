@@ -16,7 +16,7 @@ public:
    * @param det_graph the adjacency list representation of the graph in question.
    * @throws BadEdgeException if the edge does not satisfy both conditions.
    */
-  virtual void verify_edge(Edge edge) = 0;
+  virtual void verify_edge(Edge* edge) = 0;
 
   /**
    * Verifies the supernode of the given node is a (maximal) connected component.

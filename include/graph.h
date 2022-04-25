@@ -114,7 +114,7 @@ public:
    *                in index 0, and fills the remaining buffer values with
    *                vertices, starting at index 1.
    */
-  void update(GraphUpdate& upd);
+  void update(const GraphUpdate& upd);
 
   /**
    * Update all the sketches in supernode, given a batch of updates.

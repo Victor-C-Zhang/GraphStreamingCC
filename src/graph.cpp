@@ -136,7 +136,7 @@ uint128_t Graph::concat_tuple_fn(const uint32_t* edge_buf) const {
   return retval;
 }
 
-void Graph::update(GraphUpdate& upd) {
+void Graph::update(const GraphUpdate& upd) {
   if (update_locked) throw UpdateLockedException();
   Edge* edge = upd.first;
 

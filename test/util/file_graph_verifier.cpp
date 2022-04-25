@@ -42,17 +42,27 @@ FileGraphVerifier::FileGraphVerifier(const std::string &input_file) {
   std::ifstream in(input_file);
   node_id_t n;
   edge_id_t m;
-  node_id_t a, b;
-  in >> n >> m;
+  int r;
+  in >> n >> m >> r;
   sets = DisjointSetUnion<node_id_t>(n);
   for (unsigned i = 0; i < n; ++i) {
     boruvka_cc.push_back({i});
     det_graph.emplace_back();
   }
+
+  std::vector<node_id_t> buf(r);
+  int num;
   while (m--) {
-    in >> a >> b;
-    det_graph[a].insert(b);
-    det_graph[b].insert(a);
+    in >> num;
+    for (int i = 0; i < num; ++i) {
+      in >> buf[i];
+    }
+    for (int i = 0; i < num; ++i) {
+      for (int j = i + 1; j < num; ++j) {
+        det_graph[buf[i]].insert(buf[j]);
+        det_graph[buf[j]].insert(buf[i]);
+      }
+    }
   }
   in.close();
 }
@@ -71,7 +81,6 @@ std::vector<std::set<node_id_t>> FileGraphVerifier::kruskal(const std::string& i
     for (int i = 0; i < num; ++i) {
       in >> buf[i];
     }
-    // TODO: make union set(s) act on hypergraphs
     std::vector<node_id_t> vectorized(buf.begin(), buf.begin() + num);
     sets.union_sets(vectorized);
   }
