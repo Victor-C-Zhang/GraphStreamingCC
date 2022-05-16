@@ -22,7 +22,7 @@
 class GraphTest : public testing::TestWithParam<bool> {
 
 };
-INSTANTIATE_TEST_SUITE_P(GraphTestSuite, GraphTest, testing::Values(true, false));
+INSTANTIATE_TEST_SUITE_P(GraphTestSuite, GraphTest, testing::Values(false));
 
 TEST_P(GraphTest, SmallGraphConnectivity) {
   write_configuration(GetParam());
@@ -44,6 +44,7 @@ TEST_P(GraphTest, SmallGraphConnectivity) {
     g.update({edge, INSERT});
   }
   g.set_verifier(std::make_unique<FileGraphVerifier>(curr_dir + "/res/multiples_graph_1024.txt"));
+  std::cout << "Got here" << std::endl;
   ASSERT_EQ(78, g.connected_components().size());
 }
 
@@ -54,19 +55,24 @@ TEST(GraphTest, IFconnectedComponentsAlgRunTHENupdateLocked) {
   const std::string curr_dir = (std::string::npos == pos) ? "" : fname.substr(0, pos);
   std::ifstream in{curr_dir + "/res/multiples_graph_1024.txt"};
   node_id_t num_nodes;
-  in >> num_nodes;
   edge_id_t m;
-  in >> m;
-  node_id_t a, b;
-  Graph g{num_nodes};
+  int r;
+  in >> num_nodes >> m >> r;
+  Edge edge[r+1];
+  Graph g{num_nodes, r};
   while (m--) {
-    in >> a >> b;
-    g.update({{a, b}, INSERT});
+    in >> edge[0];
+    for (unsigned i = 1; i <= edge[0]; ++i) {
+      in >> edge[i];
+    }
+    g.update({edge, INSERT});
   }
   g.set_verifier(std::make_unique<FileGraphVerifier>(curr_dir + "/res/multiples_graph_1024.txt"));
   g.connected_components();
-  ASSERT_THROW(g.update({{1,2}, INSERT}), UpdateLockedException);
-  ASSERT_THROW(g.update({{1,2}, DELETE}), UpdateLockedException);
+
+  Edge test_edge[] = {2, 1, 2};
+  ASSERT_THROW(g.update({test_edge, INSERT}), UpdateLockedException);
+  ASSERT_THROW(g.update({test_edge, DELETE}), UpdateLockedException);
 }
 
 TEST_P(GraphTest, TestSupernodeRestoreAfterCCFailure) {
@@ -76,14 +82,17 @@ TEST_P(GraphTest, TestSupernodeRestoreAfterCCFailure) {
   const std::string curr_dir = (std::string::npos == pos) ? "" : fname.substr(0, pos);
   std::ifstream in{curr_dir + "/res/multiples_graph_1024.txt"};
   node_id_t num_nodes;
-  in >> num_nodes;
   edge_id_t m;
-  in >> m;
-  node_id_t a, b;
-  Graph g{num_nodes};
+  int r;
+  in >> num_nodes >> m >> r;
+  Edge edge[r+1];
+  Graph g{num_nodes, r};
   while (m--) {
-    in >> a >> b;
-    g.update({{a, b}, INSERT});
+    in >> edge[0];
+    for (unsigned i = 1; i <= edge[0]; ++i) {
+      in >> edge[i];
+    }
+    g.update({edge, INSERT});
   }
   g.set_verifier(std::make_unique<FileGraphVerifier>(curr_dir + "/res/multiples_graph_1024.txt"));
   g.should_fail_CC();
@@ -108,19 +117,24 @@ TEST_P(GraphTest, TestSupernodeRestoreAfterCCFailure) {
 TEST_P(GraphTest, TestCorrectnessOnSmallRandomGraphs) {
   write_configuration(GetParam());
   int num_trials = 5;
+  int edge_conn = 2; // TODO: try on graphs with higher connectivity
   while (num_trials--) {
     generate_stream();
     std::ifstream in{"./sample.txt"};
     node_id_t n;
     edge_id_t m;
     in >> n >> m;
-    Graph g{n};
-    int type, a, b;
+    Graph g{n, edge_conn};
+    UpdateType type;
+    Edge buf[edge_conn + 1];
     while (m--) {
-      in >> type >> a >> b;
-      if (type == INSERT) {
-        g.update({{a, b}, INSERT});
-      } else g.update({{a, b}, DELETE});
+      in >> buf[0];
+      type = static_cast<UpdateType>(buf[0] & 1);
+      buf[0] >>= 1;
+      for (int i = 1; i <= buf[0]; ++i) {
+        in >> buf[i];
+      }
+      g.update({buf, type});
     }
 
     g.set_verifier(std::make_unique<FileGraphVerifier>("./cumul_sample.txt"));
@@ -131,19 +145,25 @@ TEST_P(GraphTest, TestCorrectnessOnSmallRandomGraphs) {
 TEST_P(GraphTest, TestCorrectnessOnSmallSparseGraphs) {
   write_configuration(GetParam());
   int num_trials = 5;
+  int edge_conn = 2; // TODO: try on edge conn > 2
   while(num_trials--) {
-    generate_stream({1024,0.002,0.5,0,"./sample.txt","./cumul_sample.txt"});
+    generate_stream({1024, edge_conn, 0.002,0.5,0,"./sample.txt",""
+                                                                 "./cumul_sample.txt"});
     std::ifstream in{"./sample.txt"};
     node_id_t n;
     edge_id_t m;
     in >> n >> m;
-    Graph g{n};
-    int type, a, b;
+    Graph g{n, edge_conn};
+    UpdateType type;
+    Edge buf[edge_conn + 1];
     while (m--) {
-      in >> type >> a >> b;
-      if (type == INSERT) {
-        g.update({{a, b}, INSERT});
-      } else g.update({{a, b}, DELETE});
+      in >> buf[0];
+      type = static_cast<UpdateType>(buf[0] & 1);
+      buf[0] >>= 1;
+      for (int i = 1; i <= buf[0]; ++i) {
+        in >> buf[i];
+      }
+      g.update({buf, type});
     }
 
     g.set_verifier(std::make_unique<FileGraphVerifier>("./cumul_sample.txt"));
@@ -154,19 +174,26 @@ TEST_P(GraphTest, TestCorrectnessOnSmallSparseGraphs) {
 TEST_P(GraphTest, TestCorrectnessOfReheating) {
   write_configuration(GetParam());
   int num_trials = 5;
+  int edge_conn = 2;
   while (num_trials--) {
-    generate_stream({1024,0.002,0.5,0,"./sample.txt","./cumul_sample.txt"});
+    generate_stream({1024,edge_conn,0.002,0.5,0,"./sample.txt","./cumul_sample"
+                                                          ".txt"});
     std::ifstream in{"./sample.txt"};
     node_id_t n;
     edge_id_t m;
     in >> n >> m;
-    Graph *g = new Graph (n);
-    int type, a, b;
+    auto *g = new Graph (n, edge_conn);
     printf("number of updates = %lu\n", m);
+    UpdateType type;
+    Edge buf[edge_conn + 1];
     while (m--) {
-      in >> type >> a >> b;
-      if (type == INSERT) g->update({{a, b}, INSERT});
-      else g->update({{a, b}, DELETE});
+      in >> buf[0];
+      type = static_cast<UpdateType>(buf[0] & 1);
+      buf[0] >>= 1;
+      for (int i = 1; i <= buf[0]; ++i) {
+        in >> buf[i];
+      }
+      g->update({buf, type});
     }
     g->write_binary("./out_temp.txt");
     g->set_verifier(std::make_unique<FileGraphVerifier>("./cumul_sample.txt"));
@@ -195,19 +222,25 @@ TEST_P(GraphTest, TestCorrectnessOfReheating) {
 TEST_P(GraphTest, MultipleInserters) {
   write_configuration(GetParam(), false, 4, 2);
   int num_trials = 5;
+  int edge_conn = 2; // TODO: try on edge conn > 2
   while(num_trials--) {
-    generate_stream({1024,0.002,0.5,0,"./sample.txt","./cumul_sample.txt"});
+    generate_stream({1024, edge_conn,0.002,0.5,0,"./sample.txt","./cumul_sample"
+                                                          ".txt"});
     std::ifstream in{"./sample.txt"};
     node_id_t n;
     edge_id_t m;
     in >> n >> m;
-    Graph g{n};
-    int type, a, b;
+    Graph g{n, edge_conn};
+    UpdateType type;
+    Edge buf[edge_conn + 1];
     while (m--) {
-      in >> type >> a >> b;
-      if (type == INSERT) {
-        g.update({{a, b}, INSERT});
-      } else g.update({{a, b}, DELETE});
+      in >> buf[0];
+      type = static_cast<UpdateType>(buf[0] & 1);
+      buf[0] >>= 1;
+      for (int i = 1; i <= buf[0]; ++i) {
+        in >> buf[i];
+      }
+      g.update({buf, type});
     }
 
     g.set_verifier(std::make_unique<FileGraphVerifier>("./cumul_sample.txt"));

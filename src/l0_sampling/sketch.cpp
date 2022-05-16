@@ -122,6 +122,38 @@ bool operator== (const Sketch &sketch1, const Sketch &sketch2) {
   return true;
 }
 
+std::ostream& operator<< (std::ostream &os, const Sketch &sketch) {
+  unsigned cbucket_id = Sketch::num_buckets * Sketch::num_guesses;
+  auto cbucket_seed = Bucket_Boruvka::gen_bucket_seed(cbucket_id, sketch.seed);
+  auto cr = Bucket_Boruvka::gen_r(cbucket_seed, sketch.large_prime);
+  auto& cbucket = sketch.buckets[cbucket_id];
+  for (unsigned k = 0; k < Sketch::n; k++) {
+    os << '1';
+  }
+  os << std::endl
+     << "a:" << std::hex << (uint64_t)(cbucket.a >> 64) << (uint64_t) cbucket.a << std::endl
+     << "c:" << std::hex << (uint64_t)(cbucket.a >> 64) << (uint64_t) cbucket.a << std::endl
+     << (cbucket.is_good(1, sketch.large_prime, cbucket_seed, cr, 1) ? "good" : "bad") << std::endl;
+
+  for (unsigned i = 0; i < Sketch::num_buckets; ++i) {
+    for (unsigned j = 0; j < Sketch::num_guesses; ++j) {
+      unsigned bucket_id = i * Sketch::num_guesses + j;
+      auto bucket_seed = Bucket_Boruvka::gen_bucket_seed(bucket_id, sketch.seed);
+      auto r = Bucket_Boruvka::gen_r(bucket_seed, sketch.large_prime);
+      auto& bucket = sketch.buckets[bucket_id];
+
+      for (unsigned k = 0; k < Sketch::n; k++) {
+        os << (bucket.contains(k, bucket_seed, 1<<j) ? '1' : '0');
+      }
+      os << std::endl
+         << "a:" << std::hex << (uint64_t)(bucket.a >> 64) << (uint64_t) bucket.a << std::endl
+         << "c:" << std::hex << (uint64_t)(bucket.a >> 64) << (uint64_t) bucket.a << std::endl
+         << (bucket.is_good(i, sketch.large_prime, bucket_seed, r, 1 << j) ? "good" : "bad") << std::endl;
+    }
+  }
+  return os;
+}
+
 void Sketch::write_binary(std::ostream& binary_out) {
   const_cast<const Sketch*>(this)->write_binary(binary_out);
 }

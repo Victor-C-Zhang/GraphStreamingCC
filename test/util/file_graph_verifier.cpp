@@ -5,38 +5,6 @@
 #include <algorithm>
 #include <cassert>
 
-node_id_t num_nodes;
-int edge_connectivity;
-
-// pad {x_1, \dots, x_k} to {x_1, \dots, x_k, x_k, \dots, x_k}
-// return (x_k, x_k, \dots, x_k, x_{k-1}, \dots, x_1)_{n}
-uint128_t concat_tuple_fn(const uint32_t* edge_buf) {
-  const auto num_vals = edge_buf[0];
-  uint128_t retval = 0;
-  for (int i = 0; i < edge_connectivity - num_vals; ++i) {
-    retval *= num_nodes;
-    retval += edge_buf[num_vals];
-  }
-  for (int i = num_vals; i > 0; --i) {
-    retval *= num_nodes;
-    retval += edge_buf[i];
-  }
-  return retval;
-}
-
-void inv_concat_tuple_fn(uint128_t catted, Edge* edge_buf) {
-  edge_buf[1] = catted % num_nodes;
-  catted /= num_nodes;
-  int i = 2;
-  while (catted > 0) {
-    edge_buf[i] = catted % num_nodes;
-    if (edge_buf[i] == edge_buf[i-1]) break;
-    catted /= num_nodes;
-    ++i;
-  }
-  edge_buf[0] = i - 1;
-}
-
 FileGraphVerifier::FileGraphVerifier(const std::string &input_file) {
   kruskal_ref = kruskal(input_file);
   std::ifstream in(input_file);
@@ -128,7 +96,7 @@ void FileGraphVerifier::verify_edge(Edge* edge) {
       }
     }
   }
-  std::vector<Edge> e(edge + 1, edge + n + 1);
+  std::vector<Edge> e(reps + 1, reps + n + 1);
   // if all checks pass, merge supernodes
   auto f = sets.link(e);
   for (unsigned i = 1; i <= n; ++i) {

@@ -55,8 +55,6 @@ protected:
   void backup_to_disk(const std::vector<node_id_t>& ids_to_backup);
   void restore_from_disk(const std::vector<node_id_t>& ids_to_restore);
 
-  uint128_t concat_tuple_fn(const uint32_t* edge_buf) const;
-
   /**
    * Update the query array with new samples
    * @param edge_query      an array of supernode query results
@@ -150,7 +148,6 @@ public:
   /**
    * Generate a delta node for the purposes of updating a node sketch
    * (supernode).
-   * @param node_n     the total number of nodes in the graph.
    * @param node_seed  the seed of the supernode in question.
    * @param src        the src id.
    * @param edges      a list of edge indices to which src is connected and
@@ -160,7 +157,7 @@ public:
    *                   calling thread.
    * @returns nothing (supernode delta is in delta_loc).
    */
-  static void generate_delta_node(node_id_t node_n, uint64_t node_seed, node_id_t src,
+  static void generate_delta_node(uint64_t node_seed, node_id_t src,
                                   const std::vector<delta_update_t> &edges, Supernode
                                   *delta_loc);
 

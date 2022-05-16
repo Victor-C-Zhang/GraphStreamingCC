@@ -5,9 +5,11 @@
 #include "types.h"
 
 size_t Supernode::bytes_size;
+int Supernode::edge_connectivity;
+uint64_t Supernode::num_nodes;
 
-Supernode::Supernode(uint64_t n, uint64_t seed): idx(0), num_sketches(log2(n)/(log2(3)-1)),
-               n(n), seed(seed), sketch_size(Sketch::sketchSizeof()) {
+Supernode::Supernode(uint64_t seed): idx(0), num_sketches(log2(num_nodes)/
+              (log2(3)-1)), seed(seed), sketch_size(Sketch::sketchSizeof()) {
 
   size_t sketch_width = guess_gen(Sketch::get_failure_factor());
   // generate num_sketches sketches for each supernode (read: node)
@@ -17,8 +19,9 @@ Supernode::Supernode(uint64_t n, uint64_t seed): idx(0), num_sketches(log2(n)/(l
   }
 }
 
-Supernode::Supernode(uint64_t n, uint64_t seed, std::istream &binary_in) :
-  idx(0), num_sketches(log2(n)/(log2(3)-1)), n(n), seed(seed), sketch_size(Sketch::sketchSizeof()) {
+Supernode::Supernode(uint64_t seed, std::istream &binary_in) :
+  idx(0), num_sketches(log2(num_nodes)/(log2(3)-1)), seed(seed), sketch_size
+  (Sketch::sketchSizeof()) {
 
   size_t sketch_width = guess_gen(Sketch::get_failure_factor());
   // read num_sketches sketches from file for each supernode (read: node)
@@ -28,19 +31,19 @@ Supernode::Supernode(uint64_t n, uint64_t seed, std::istream &binary_in) :
   }
 }
 
-Supernode::Supernode(const Supernode& s) : idx(s.idx), num_sketches(s.num_sketches), n(s.n),
+Supernode::Supernode(const Supernode& s) : idx(s.idx), num_sketches(s.num_sketches),
     seed(s.seed), sketch_size(s.sketch_size) {
   for (int i = 0; i < num_sketches; ++i) {
     Sketch::makeSketch(get_sketch(i), *s.get_sketch(i));
   }
 }
 
-Supernode* Supernode::makeSupernode(uint64_t n, long seed, void *loc) {
-  return new (loc) Supernode(n, seed);
+Supernode* Supernode::makeSupernode(long seed, void *loc) {
+  return new (loc) Supernode(seed);
 }
 
-Supernode* Supernode::makeSupernode(uint64_t n, long seed, std::istream &binary_in, void *loc) {
-  return new (loc) Supernode(n, seed, binary_in);
+Supernode* Supernode::makeSupernode(long seed, std::istream &binary_in, void *loc) {
+  return new (loc) Supernode(seed, binary_in);
 }
 
 Supernode* Supernode::makeSupernode(const Supernode& s, void *loc) {
@@ -50,14 +53,31 @@ Supernode* Supernode::makeSupernode(const Supernode& s, void *loc) {
 Supernode::~Supernode() {
 }
 
+
+// pad {x_1, \dots, x_k} to {x_1, \dots, x_k, x_k, \dots, x_k}
+// return (x_k, x_k, \dots, x_k, x_{k-1}, \dots, x_1)_{n}
+uint128_t Supernode::concat_tuple_fn(const uint32_t* edge_buf) {
+  const auto num_vals = edge_buf[0];
+  uint128_t retval = 0;
+  for (int i = 0; i < edge_connectivity - num_vals; ++i) {
+    retval *= num_nodes;
+    retval += edge_buf[num_vals];
+  }
+  for (int i = num_vals; i > 0; --i) {
+    retval *= num_nodes;
+    retval += edge_buf[i];
+  }
+  return retval;
+}
+
 inline void Supernode::inv_concat_tuple_fn(uint128_t catted, Edge* edge_buf) {
-  edge_buf[1] = catted % n;
-  catted /= n;
+  edge_buf[1] = catted % num_nodes;
+  catted /= num_nodes;
   int i = 2;
   while (catted > 0) {
-    edge_buf[i] = catted % n;
+    edge_buf[i] = catted % num_nodes;
     if (edge_buf[i] == edge_buf[i-1]) break;
-    catted /= n;
+    catted /= num_nodes;
     ++i;
   }
   edge_buf[0] = i - 1;
@@ -113,9 +133,9 @@ void Supernode::apply_delta_update(const Supernode* delta_node) {
  * Considered using spin-threads and parallelism within sketch::update, but
  * this was slow (at least on small graph inputs).
  */
-void Supernode::delta_supernode(uint64_t n, uint64_t seed,
-               const std::vector<Update> &updates, void *loc) {
-  auto delta_node = makeSupernode(n, seed, loc);
+void Supernode::delta_supernode(uint64_t seed, const std::vector<Update>
+      &updates, void *loc) {
+  auto delta_node = makeSupernode(seed, loc);
 #pragma omp parallel for num_threads(GraphWorker::get_group_size()) default(shared)
   for (int i = 0; i < delta_node->num_sketches; ++i) {
     delta_node->get_sketch(i)->batch_update(updates);

@@ -4,7 +4,7 @@
 #include <random>
 #include <algorithm>
 
-#include <gutter_tree.h>
+//#include <gutter_tree.h>
 #include <standalone_gutters.h>
 #include "../include/graph.h"
 #include "../include/graph_worker.h"
@@ -28,9 +28,9 @@ Graph::Graph(node_id_t num_nodes, int edge_connectivity): num_nodes(num_nodes) {
   seed = r();
 
   std::fill(size, size + num_nodes, 1);
-  for (node_id_t i = 0; i < num_nodes; ++i) {
+  for (int i = 0; i < num_nodes; ++i) {
     representatives->insert(i);
-    supernodes[i] = Supernode::makeSupernode(num_nodes,seed);
+    supernodes[i] = Supernode::makeSupernode(seed);
     parent[i] = i;
   }
   num_updates = 0; // REMOVE this later
@@ -74,7 +74,7 @@ Graph::Graph(const std::string& input_file) : num_updates(0) {
   std::fill(size, size+num_nodes, 1);
   for (node_id_t i = 0; i < num_nodes; ++i) {
     representatives->insert(i);
-    supernodes[i] = Supernode::makeSupernode(num_nodes, seed, binary_in);
+    supernodes[i] = Supernode::makeSupernode(seed, binary_in);
     parent[i] = i;
   }
   binary_in.close();
@@ -108,7 +108,7 @@ Graph::~Graph() {
   open_graph = false;
 }
 
-void Graph::generate_delta_node(node_id_t node_n, uint64_t node_seed, node_id_t
+void Graph::generate_delta_node(uint64_t node_seed, node_id_t
                src, const std::vector<delta_update_t> &edges,
                                 Supernode *delta_loc) {
   std::vector<Update> updates;
@@ -117,23 +117,7 @@ void Graph::generate_delta_node(node_id_t node_n, uint64_t node_seed, node_id_t
   for (const auto& edge : edges) {
     updates.push_back({edge.second, edge.first});
   }
-  Supernode::delta_supernode(node_n, node_seed, updates, delta_loc);
-}
-
-// pad {x_1, \dots, x_k} to {x_1, \dots, x_k, x_k, \dots, x_k}
-// return (x_k, x_k, \dots, x_k, x_{k-1}, \dots, x_1)_{n}
-uint128_t Graph::concat_tuple_fn(const uint32_t* edge_buf) const {
-  const auto num_vals = edge_buf[0];
-  uint128_t retval = 0;
-  for (int i = 0; i < Supernode::get_edge_connectivity() - num_vals; ++i) {
-    retval *= num_nodes;
-    retval += edge_buf[num_vals];
-  }
-  for (int i = num_vals; i > 0; --i) {
-    retval *= num_nodes;
-    retval += edge_buf[i];
-  }
-  return retval;
+  Supernode::delta_supernode(node_seed, updates, delta_loc);
 }
 
 void Graph::update(const GraphUpdate& upd) {
@@ -144,7 +128,7 @@ void Graph::update(const GraphUpdate& upd) {
   // sort if necessary
   std::sort(edge + 1, edge + num_vals + 1);
 
-  auto paired = concat_tuple_fn(edge);
+  auto paired = Supernode::concat_tuple_fn(edge);
   const auto num_verts = edge[0];
   // first (lowest) gets -(num - 1), rest get +1
   gts->insert({edge[1], {-(num_verts - 1), paired}});
@@ -158,7 +142,7 @@ void Graph::batch_update(node_id_t src, const std::vector<delta_update_t> &edges
   if (update_locked) throw UpdateLockedException();
 
   num_updates += edges.size();
-  generate_delta_node(supernodes[src]->n, supernodes[src]->seed, src, edges, delta_loc);
+  generate_delta_node(supernodes[src]->seed, src, edges, delta_loc);
   supernodes[src]->apply_delta_update(delta_loc);
 }
 
@@ -387,7 +371,7 @@ void Graph::restore_from_disk(const std::vector<node_id_t>& ids_to_restore) {
   }
   for (node_id_t idx : ids_to_restore) {
     free(this->supernodes[idx]);
-    this->supernodes[idx] = Supernode::makeSupernode(num_nodes, seed, binary_in);
+    this->supernodes[idx] = Supernode::makeSupernode(seed, binary_in);
   }
 }
 

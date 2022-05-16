@@ -12,18 +12,28 @@ TEST(DeterministicToolsTestSuite, TestKruskal) {
 TEST(DeterministicToolsTestSuite, TestEdgeVerifier) {
   FileGraphVerifier verifier(curr_dir+"/../res/multiples_graph_1024.txt");
   // add edges of the form {i,2i}
+  Edge edge[3];
+  edge[0] = 2;
   for (int i = 2; i < 512; ++i) {
-    verifier.verify_edge({i,i*2});
+    edge[1] = i;
+    edge[2] = 2*i;
+    verifier.verify_edge(edge);
   }
+
   // throw on nonexistent edge
-  ASSERT_THROW(verifier.verify_edge({69,420}), BadEdgeException);
-  ASSERT_THROW(verifier.verify_edge({420,69}), BadEdgeException);
+  edge[1] = 69;
+  edge[2] = 420;
+  ASSERT_THROW(verifier.verify_edge(edge), BadEdgeException);
+
   // throw on already-included edge
-  ASSERT_THROW(verifier.verify_edge({120,240}), BadEdgeException);
-  ASSERT_THROW(verifier.verify_edge({240,120}), BadEdgeException);
+  edge[1] = 120;
+  edge[2] = 240;
+  ASSERT_THROW(verifier.verify_edge(edge), BadEdgeException);
+
   // throw on edge within the same set
-  ASSERT_THROW(verifier.verify_edge({250,1000}), BadEdgeException);
-  ASSERT_THROW(verifier.verify_edge({1000,250}), BadEdgeException);
+  edge[1] = 250;
+  edge[2] = 1000;
+  ASSERT_THROW(verifier.verify_edge(edge), BadEdgeException);
 }
 
 TEST(DeterministicToolsTestSuite, TestCCVerifier) {
@@ -33,11 +43,17 @@ TEST(DeterministicToolsTestSuite, TestCCVerifier) {
   verifier.verify_cc(1);
   verifier.verify_cc(911);
   // add edges of the form {i,2i}
+  Edge edge[3];
+  edge[0] = 2;
   for (int i = 2; i < 512; ++i) {
-    verifier.verify_edge({i,i*2});
+    edge[1] = i;
+    edge[2] = 2*i;
+    verifier.verify_edge(edge);
   }
   // nothing else is currently a CC
   for (int i = 2; i < 512; ++i) {
     ASSERT_THROW(verifier.verify_cc(i), NotCCException);
   }
 }
+
+// TODO: test on graphs with edge connectivity >2

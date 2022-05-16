@@ -40,7 +40,8 @@ T DisjointSetUnion<T>::link(std::vector<T>& ts) {
   }
   for (int i = 0; i < n; ++i) {
     if (i == max_idx) continue;
-    parent[ts[i]] = max_idx;
+    if (ts[i] == ts[max_idx]) continue;
+    parent[ts[i]] = ts[max_idx];
     size[ts[max_idx]] += size[ts[i]];
   }
   return ts[max_idx];

@@ -8,30 +8,32 @@
  */
 class Testing_Vector {
   const unsigned long vector_length, num_updates;
-  std::vector<bool> vect;
-  std::vector<vec_t> stream;
+  std::vector<long> vect;
+  std::vector<Update> stream;
 
 public:
   //n is size of vector and m is number of updates
   Testing_Vector(unsigned long vector_length, unsigned long num_updates) :
       vector_length(vector_length), num_updates(num_updates),
-      vect(vector_length, false), stream(num_updates) {
+      vect(vector_length, 0), stream(num_updates) {
     //Initialize the stream, and finalize the input vector.
     for (unsigned int i = 0; i < num_updates; i++){
       vec_t index = rand() % vector_length;
-      stream[i] = index;
-      vect[index] = !vect[index];
+      long delta = rand() % 9 - 4;
+      if (delta == 0) delta = 1;
+      stream[i] = {index, delta};
+      vect[index] += delta;
       //cout << "Index: " << stream[i].index << " Delta: " << stream[i].delta << endl;
     }
   }
 
   //get the ith update (starting from index 0)
-  vec_t get_update(unsigned long i){
+  Update get_update(unsigned long i){
     return stream[i];
   }
 
   //get the ith entry of the processed Testing_Vector
-  bool get_entry(unsigned long i){
+  long get_entry(unsigned long i){
     return vect[i];
   }
 

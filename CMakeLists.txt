@@ -125,8 +125,7 @@ if (BUILD_EXE)
     test/graph_test.cpp
     test/sketch_test.cpp
     test/supernode_test.cpp
-    test/util_test.cpp
-    test/util/file_graph_verifier.cpp
+      test/util/file_graph_verifier.cpp
     test/util/graph_gen.cpp
     test/util/graph_gen_test.cpp
     test/util/graph_verifier_test.cpp)
@@ -153,3 +152,10 @@ if (BUILD_BENCH)
   add_dependencies(bench_cc GraphStreamingCC benchmark)
   target_link_libraries(bench_cc GraphStreamingCC benchmark::benchmark xxhash)
 endif()
+
+add_executable(temp_test
+  test/util/temp_test.cpp
+  test/util/graph_gen.cpp
+)
+add_dependencies(temp_test GraphStreamingCC)
+target_link_libraries(temp_test GraphStreamingCC xxhash)
