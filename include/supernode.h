@@ -86,11 +86,19 @@ public:
 
   ~Supernode();
 
-  static inline void configure(uint64_t n, int edge_conn, vec_t sketch_fail_factor=100) {
-    Sketch::configure(n*n, sketch_fail_factor);
-    bytes_size = sizeof(Supernode) + log2(n)/(log2(3)-1) * Sketch::sketchSizeof() - sizeof(char);
+  static inline void configure(uint64_t _num_nodes, int edge_conn, vec_t sketch_fail_factor=100) {
+    auto slowpow = [](uint64_t n, int r) {
+      uint128_t res = 1;
+      while (r--) {
+        res *= n;
+      }
+      return res;
+    };
+
+    Sketch::configure(slowpow(_num_nodes, edge_conn), sketch_fail_factor);
+    bytes_size = sizeof(Supernode) + log2(_num_nodes) / (log2(3) - 1) * Sketch::sketchSizeof() - sizeof(char);
     edge_connectivity = edge_conn;
-    num_nodes = n;
+    num_nodes = _num_nodes;
   }
 
   static uint128_t concat_tuple_fn(const uint32_t* edge_buf);

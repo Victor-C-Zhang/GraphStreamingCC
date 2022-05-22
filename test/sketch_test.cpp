@@ -56,7 +56,7 @@ TEST(SketchTestSuite, TestExceptions) {
 TEST(SketchTestSuite, GIVENonlyIndexZeroUpdatedTHENitWorks) {
   // GIVEN only the index 0 is updated
   srand(time(nullptr));
-  Sketch::configure(1000 * 1000, fail_factor);
+  Sketch::configure(1000, fail_factor);
   SketchUniquePtr sketch = makeSketch(rand());
   sketch->update({0, 3});
   sketch->update({0, -1});
@@ -67,7 +67,8 @@ TEST(SketchTestSuite, GIVENonlyIndexZeroUpdatedTHENitWorks) {
   vec_t res = query_ret.first;
   SampleSketchRet ret_code = query_ret.second;
 
-  ASSERT_EQ(res, 0) << "Expected: 0" << std::endl << "Actual: " << res;
+  ASSERT_EQ(res, 0) << "Expected: 0" << std::endl << "Actual: " << (uint64_t)
+              (res >> 64) << (uint64_t) res;
   ASSERT_EQ(ret_code, GOOD);
 }
 

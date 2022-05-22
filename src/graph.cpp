@@ -199,7 +199,7 @@ Graph::supernodes_to_merge(Edge *edge_query, SampleSketchRet *retcode_query,
     bool should_continue = true;
     node_id_t max_size = 0;
     int max_ptr = 0;
-    for (int j = 1; j <= edge_n; ++j) {
+    for (int j = 0; j < edge_n; ++j) {
       if (parents[j] != parents[1]) {
         should_continue = false;
       }
@@ -215,7 +215,7 @@ Graph::supernodes_to_merge(Edge *edge_query, SampleSketchRet *retcode_query,
 #endif
 
     const auto a = parents[max_ptr];
-    for (int j = 1; j <= edge_n; ++j) {
+    for (int j = 0; j < edge_n; ++j) {
       if (j == max_ptr) continue;
       // update parent status
       const auto b = parents[j];

@@ -155,8 +155,8 @@ void insert_delete(double p, int max_appearances, const std::string& in_file,
     cumul_m += mult * ins_del_arr[i];
   }
 
-  out << n << " " << full_m << endl;
-  cumul_out << n << " " << cumul_m << endl;
+  out << n << " " << full_m << " " << conn << endl;
+  cumul_out << n << " " << cumul_m << " " << conn << endl;
 
   auto* memoized = static_cast<uint128_t *>(malloc( ins_del_arr[1] * sizeof(uint128_t)));
   Edge buf[conn + 1];

@@ -9,6 +9,7 @@ vec_t Sketch::n;
 size_t Sketch::num_elems;
 size_t Sketch::num_buckets;
 size_t Sketch::num_guesses;
+ubucket_t Sketch::large_prime;
 
 /*
  * Static functions for creating sketches with a provided memory location.
@@ -26,20 +27,21 @@ Sketch* Sketch::makeSketch(void* loc, const Sketch& s) {
   return new (loc) Sketch(s);
 }
 
-Sketch::Sketch(uint64_t seed): seed(seed), large_prime(PrimeGenerator::generate_prime(static_cast<ubucket_t>(n) * n)) {
+Sketch::Sketch(uint64_t seed): seed(seed) {
   // zero buckets
   std::memset(_bucket_data, 0, num_elems * sizeof(Bucket_Boruvka));
 
   buckets = reinterpret_cast<Bucket_Boruvka *>(_bucket_data);
 }
 
-Sketch::Sketch(uint64_t seed, std::istream &binary_in): seed(seed), large_prime(PrimeGenerator::generate_prime(static_cast<ubucket_t>(n) * n)) {
+Sketch::Sketch(uint64_t seed, std::istream &binary_in): seed(seed) {
   binary_in.read(_bucket_data, num_elems * sizeof(Bucket_Boruvka));
   buckets = reinterpret_cast<Bucket_Boruvka *>(_bucket_data);
 }
 
-Sketch::Sketch(const Sketch& s) : seed(s.seed), large_prime(s.large_prime) {
+Sketch::Sketch(const Sketch& s) : seed(s.seed) {
   std::memcpy(_bucket_data, s._bucket_data, num_elems * sizeof(Bucket_Boruvka));
+  buckets = reinterpret_cast<Bucket_Boruvka *>(_bucket_data);
 }
 
 void Sketch::update(const Update& update) {
@@ -78,9 +80,9 @@ std::pair<bucket_t , SampleSketchRet> Sketch::query() {
   }
 
   auto cbucket_seed = Bucket_Boruvka::gen_bucket_seed(num_elems - 1, seed);
-  auto cr = Bucket_Boruvka::gen_r(num_elems - 1, large_prime);
-  if (determ_bucket.is_good(n, large_prime, cbucket_seed, cr, 1)) {
-    return {determ_bucket.a, GOOD};
+  auto cr = Bucket_Boruvka::gen_r(cbucket_seed, large_prime);
+  if (determ_bucket.is_good(n, large_prime, cbucket_seed, cr)) {
+    return {determ_bucket.b / determ_bucket.a - 1, GOOD};
   }
   for (unsigned i = 0; i < num_buckets; ++i) {
     for (unsigned j = 0; j < num_guesses; ++j) {
@@ -89,7 +91,7 @@ std::pair<bucket_t , SampleSketchRet> Sketch::query() {
       auto r = Bucket_Boruvka::gen_r(bucket_seed, large_prime);
       auto& bucket = buckets[bucket_id];
       if (bucket.is_good(n, large_prime, bucket_seed, r, 2 << j)) {
-        return {bucket.a, GOOD};
+        return {bucket.b / bucket.a - 1, GOOD};
       }
     }
   }
@@ -105,7 +107,7 @@ Sketch &operator+= (Sketch &sketch1, const Sketch &sketch2) {
     bucket1.a += bucket2.a;
     bucket1.b += bucket2.b;
     bucket1.c += bucket2.c;
-    bucket1.c %= sketch1.large_prime;
+    bucket1.c %= Sketch::large_prime;
   }
   sketch1.already_queried = sketch1.already_queried || sketch2.already_queried;
   return sketch1;
@@ -125,7 +127,7 @@ bool operator== (const Sketch &sketch1, const Sketch &sketch2) {
 std::ostream& operator<< (std::ostream &os, const Sketch &sketch) {
   unsigned cbucket_id = Sketch::num_buckets * Sketch::num_guesses;
   auto cbucket_seed = Bucket_Boruvka::gen_bucket_seed(cbucket_id, sketch.seed);
-  auto cr = Bucket_Boruvka::gen_r(cbucket_seed, sketch.large_prime);
+  auto cr = Bucket_Boruvka::gen_r(cbucket_seed, Sketch::large_prime);
   auto& cbucket = sketch.buckets[cbucket_id];
   for (unsigned k = 0; k < Sketch::n; k++) {
     os << '1';
@@ -133,13 +135,13 @@ std::ostream& operator<< (std::ostream &os, const Sketch &sketch) {
   os << std::endl
      << "a:" << std::hex << (uint64_t)(cbucket.a >> 64) << (uint64_t) cbucket.a << std::endl
      << "c:" << std::hex << (uint64_t)(cbucket.a >> 64) << (uint64_t) cbucket.a << std::endl
-     << (cbucket.is_good(1, sketch.large_prime, cbucket_seed, cr, 1) ? "good" : "bad") << std::endl;
+     << (cbucket.is_good(1, Sketch::large_prime, cbucket_seed, cr, 1) ? "good" : "bad") << std::endl;
 
   for (unsigned i = 0; i < Sketch::num_buckets; ++i) {
     for (unsigned j = 0; j < Sketch::num_guesses; ++j) {
       unsigned bucket_id = i * Sketch::num_guesses + j;
       auto bucket_seed = Bucket_Boruvka::gen_bucket_seed(bucket_id, sketch.seed);
-      auto r = Bucket_Boruvka::gen_r(bucket_seed, sketch.large_prime);
+      auto r = Bucket_Boruvka::gen_r(bucket_seed, Sketch::large_prime);
       auto& bucket = sketch.buckets[bucket_id];
 
       for (unsigned k = 0; k < Sketch::n; k++) {
@@ -148,7 +150,7 @@ std::ostream& operator<< (std::ostream &os, const Sketch &sketch) {
       os << std::endl
          << "a:" << std::hex << (uint64_t)(bucket.a >> 64) << (uint64_t) bucket.a << std::endl
          << "c:" << std::hex << (uint64_t)(bucket.a >> 64) << (uint64_t) bucket.a << std::endl
-         << (bucket.is_good(i, sketch.large_prime, bucket_seed, r, 1 << j) ? "good" : "bad") << std::endl;
+         << (bucket.is_good(i, Sketch::large_prime, bucket_seed, r, 1 << j) ? "good" : "bad") << std::endl;
     }
   }
   return os;

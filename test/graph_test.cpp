@@ -44,7 +44,6 @@ TEST_P(GraphTest, SmallGraphConnectivity) {
     g.update({edge, INSERT});
   }
   g.set_verifier(std::make_unique<FileGraphVerifier>(curr_dir + "/res/multiples_graph_1024.txt"));
-  std::cout << "Got here" << std::endl;
   ASSERT_EQ(78, g.connected_components().size());
 }
 
@@ -119,11 +118,13 @@ TEST_P(GraphTest, TestCorrectnessOnSmallRandomGraphs) {
   int num_trials = 5;
   int edge_conn = 2; // TODO: try on graphs with higher connectivity
   while (num_trials--) {
-    generate_stream();
+    generate_stream({1024, edge_conn, 0.002,0.5,0,"./sample.txt",""
+                                                                 "./cumul_sample.txt"});
     std::ifstream in{"./sample.txt"};
     node_id_t n;
     edge_id_t m;
-    in >> n >> m;
+    int r;
+    in >> n >> m >> r;
     Graph g{n, edge_conn};
     UpdateType type;
     Edge buf[edge_conn + 1];
@@ -152,7 +153,8 @@ TEST_P(GraphTest, TestCorrectnessOnSmallSparseGraphs) {
     std::ifstream in{"./sample.txt"};
     node_id_t n;
     edge_id_t m;
-    in >> n >> m;
+    int r;
+    in >> n >> m >> r;
     Graph g{n, edge_conn};
     UpdateType type;
     Edge buf[edge_conn + 1];
@@ -181,7 +183,8 @@ TEST_P(GraphTest, TestCorrectnessOfReheating) {
     std::ifstream in{"./sample.txt"};
     node_id_t n;
     edge_id_t m;
-    in >> n >> m;
+    int r;
+    in >> n >> m >> r;
     auto *g = new Graph (n, edge_conn);
     printf("number of updates = %lu\n", m);
     UpdateType type;
@@ -229,7 +232,8 @@ TEST_P(GraphTest, MultipleInserters) {
     std::ifstream in{"./sample.txt"};
     node_id_t n;
     edge_id_t m;
-    in >> n >> m;
+    int r;
+    in >> n >> m >> r;
     Graph g{n, edge_conn};
     UpdateType type;
     Edge buf[edge_conn + 1];

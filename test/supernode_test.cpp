@@ -87,9 +87,6 @@ protected:
         for (unsigned j = i * i; j < num_nodes; j += i) prime[j] = false;
       }
     }
-
-    // configure
-    Supernode::configure(num_nodes, edge_conn);
   }
   static void TearDownTestSuite() {
     delete graph_edges;
@@ -97,7 +94,9 @@ protected:
     free(prime);
   }
 
-  void SetUp() override {Supernode::configure(num_nodes, edge_conn);}
+  void SetUp() override {
+    Supernode::configure(num_nodes, edge_conn);
+  }
   void TearDown() override {}
 };
 
@@ -107,22 +106,21 @@ bool* SupernodeTestSuite::prime;
 
 TEST_F(SupernodeTestSuite, TestConcatPairingFn) {
   uint32_t buf[5];
-  const int n = 1000;
+  uint32_t qbuf[5];
+  const int n = 100;
   const int edge_conn = 4;
   Supernode::configure(n, edge_conn);
-  Supernode s = Supernode(12345);
 
-  // right-pad with the last value if necessary
-  auto pairing_fn = [](int x1, int x2, int x3, int x4) {
-    uint128_t e = x1 + x2 * n + x3 * n * n + x4 * n * n * n;
-    return e;
-  };
-
-  for (int i = 0; i < 100; ++i) {
-    for (int j = i + 1; j < 100; ++j) {
-      for (int k = j + 1; k < 100; ++k) {
+  qbuf[0] = 4;
+  for (int i = 0; i < n; ++i) {
+    qbuf[1] = i;
+    for (int j = i + 1; j < n; ++j) {
+      qbuf[2] = j;
+      for (int k = j + 1; k < n; ++k) {
+        qbuf[3] = k;
         for (int l = k + 1; l < n; ++l) {
-          s.inv_concat_tuple_fn(pairing_fn(i,j,k,l), buf);
+          qbuf[4] = l;
+          Supernode::inv_concat_tuple_fn(Supernode::concat_tuple_fn(qbuf), buf);
           ASSERT_EQ(buf[0], 4);
           ASSERT_EQ(buf[1], i);
           ASSERT_EQ(buf[2], j);
@@ -133,10 +131,14 @@ TEST_F(SupernodeTestSuite, TestConcatPairingFn) {
     }
   }
 
-  for (int i = 0; i < 100; ++i) {
-    for (int j = i + 1; j < 100; ++j) {
+  qbuf[0] = 3;
+  for (int i = 0; i < n; ++i) {
+    qbuf[1] = i;
+    for (int j = i + 1; j < n; ++j) {
+      qbuf[2] = j;
       for (int k = j + 1; k < n; ++k) {
-          s.inv_concat_tuple_fn(pairing_fn(i,j,k,k), buf);
+        qbuf[3] = k;
+          Supernode::inv_concat_tuple_fn(Supernode::concat_tuple_fn(qbuf), buf);
           ASSERT_EQ(buf[0], 3);
           ASSERT_EQ(buf[1], i);
           ASSERT_EQ(buf[2], j);
@@ -273,11 +275,13 @@ void inline apply_delta_to_node(Supernode* node, std::vector<Update>& updates) {
 }
 
 TEST_F(SupernodeTestSuite, TestBatchUpdate) {
-  unsigned long vec_size = 1000000000, num_updates = 100000;
+  unsigned long num_nodes = 1e4;
+  unsigned long vec_size = num_nodes * num_nodes;
+  unsigned long num_updates = 100000;
   srand(time(nullptr));
   UpdateList ulist(vec_size, num_updates);
   auto seed = rand();
-  Supernode::configure(vec_size, edge_conn);
+  Supernode::configure(num_nodes, edge_conn);
   Supernode* supernode = Supernode::makeSupernode(seed);
   Supernode* supernode_batch = Supernode::makeSupernode(seed);
   auto start_time = std::chrono::steady_clock::now();
@@ -300,9 +304,10 @@ TEST_F(SupernodeTestSuite, TestConcurrency) {
   int num_threads_per_group = 2;
   unsigned num_threads =
        std::thread::hardware_concurrency() / num_threads_per_group - 1; // hyperthreading?
-  unsigned vec_len = 1000000;
+  unsigned num_nodes = 1000;
+  unsigned vec_len = num_nodes * num_nodes;
   unsigned num_updates = 100000;
-  Supernode::configure(vec_len, edge_conn);
+  Supernode::configure(num_nodes, edge_conn);
 
   std::vector<UpdateList> test_list(num_threads, UpdateList(vec_len, num_updates));
 

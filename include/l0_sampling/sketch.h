@@ -10,11 +10,12 @@
 #include "bucket.h"
 #include "../types.h"
 #include "../util.h"
+#include "prime_generator.h"
 #include <gtest/gtest_prod.h>
 
 // max number of non-zeroes in vector is n/2*n/2=n^2/4
-#define guess_gen(x) double_to_ull(log2(x) - 2)
-#define bucket_gen(d) double_to_ull((log2(d)+1))
+#define guess_gen(x) double_to_ull(log2(x) + 1)
+#define bucket_gen(d) double_to_ull((log2(d) + 2))
 
 enum SampleSketchRet {
   GOOD,  // querying this sketch returned a single non-zero value
@@ -34,10 +35,10 @@ private:
   static size_t num_elems;         // length of our actual arrays in number of elements
   static size_t num_buckets;       // Portion of array length, number of buckets
   static size_t num_guesses;       // Portion of array length, number of guesses
+  static ubucket_t large_prime;    // Prime larger than n^2 to mod bucket ops by
 
   // Seed used for hashing operations in this sketch.
   const uint64_t seed;
-  const ubucket_t large_prime;
 
   Bucket_Boruvka* buckets;
 
@@ -90,6 +91,7 @@ public:
     num_buckets = bucket_gen(failure_factor);
     num_guesses = guess_gen(n);
     num_elems = num_buckets * num_guesses + 1;
+    large_prime = PrimeGenerator::generate_prime(((ubucket_t) n)*((ubucket_t) n));
   }
 
   inline static size_t sketchSizeof()

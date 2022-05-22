@@ -47,6 +47,16 @@ struct Bucket_Boruvka {
   bool contains(const vec_t& index, const XXH64_hash_t& bucket_seed, const vec_t& guess_nonzero) const;
 
   /**
+   * Checks whether this (deterministic) bucket is good.
+   * @param n Size of the vector being sketched.
+   * @param large_prime Modulus to use in c caluclation.
+   * @param bucket_seed This Bucket's seed, generated with gen_bucket_seed.
+   * @param r This Bucket's r, generated with gen_r.
+   * @return true if this bucket is good, else false.
+   */
+  bool is_good(const vec_t& n, const ubucket_t& large_prime, const XXH64_hash_t& bucket_seed, const ubucket_t& r) const;
+
+  /**
    * Checks whether this Bucket is good.
    * @param n Size of the vector being sketched.
    * @param large_prime Modulus to use in c caluclation.
